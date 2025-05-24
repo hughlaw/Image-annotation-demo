@@ -24,11 +24,13 @@ function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentTool, setCurrentTool] = useState<Tool>('select');
   const [draggedPointIndex, setDraggedPointIndex] = useState<number | null>(null);
+  const [isDraggingShape, setIsDraggingShape] = useState(false);
   const [history, setHistory] = useState<number[][]>([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const stageRef = useRef(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedImage] = useImage(imageUrl);
+  const [polygonPosition, setPolygonPosition] = useState({ x: 0, y: 0 });
 
   const addToHistory = (newPoints: number[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -72,7 +74,7 @@ function App() {
   };
 
   const handleStageClick = (e: KonvaEventObject<MouseEvent>) => {
-    if (currentTool !== 'polygon' || draggedPointIndex !== null) return;
+    if (currentTool !== 'polygon' || draggedPointIndex !== null || isDraggingShape) return;
 
     const stage = e.target.getStage();
     const point = stage?.getPointerPosition();
@@ -114,6 +116,24 @@ function App() {
       addToHistory(points);
     }
     setDraggedPointIndex(null);
+  };
+
+  const handleShapeDragStart = () => {
+    setIsDraggingShape(true);
+  };
+
+  const handleShapeDragMove = (e: KonvaEventObject<DragEvent>) => {
+    setPolygonPosition({ x: e.target.x(), y: e.target.y() });
+  };
+
+  const handleShapeDragEnd = (e: KonvaEventObject<DragEvent>) => {
+    setIsDraggingShape(false);
+    const { x, y } = polygonPosition;
+    // Apply the offset to all points
+    const newPoints = points.map((point, i) => (i % 2 === 0 ? point + x : point + y));
+    setPoints(newPoints);
+    setPolygonPosition({ x: 0, y: 0 });
+    addToHistory(newPoints);
   };
 
   const handlePointContextMenu = (index: number, e: KonvaEventObject<MouseEvent>) => {
@@ -226,6 +246,12 @@ function App() {
                   strokeWidth={2}
                   closed={!isDrawing}
                   fill={!isDrawing ? 'rgba(0,0,0,0.1)' : undefined}
+                  draggable={!isDrawing}
+                  x={polygonPosition.x}
+                  y={polygonPosition.y}
+                  onDragStart={handleShapeDragStart}
+                  onDragMove={handleShapeDragMove}
+                  onDragEnd={handleShapeDragEnd}
                 />
                 {/* Draw points */}
                 {points.map((point, i) => {
@@ -234,8 +260,8 @@ function App() {
                     return (
                       <Circle
                         key={i}
-                        x={point}
-                        y={points[i + 1]}
+                        x={point + polygonPosition.x}
+                        y={points[i + 1] + polygonPosition.y}
                         radius={4}
                         fill="#000000"
                         stroke="#ffffff"
