@@ -11,9 +11,10 @@ import './App.css';
 import Button from './components/atoms/Button';
 import Annotation from './components/molecules/Annotation';
 import { Layer, Stage, Image, Line, Circle } from 'react-konva';
-import { useState, useRef } from 'react';
+import { useState, useRef, useReducer, useEffect } from 'react';
 import useImage from 'use-image';
 import type { KonvaEventObject } from 'konva/lib/Node';
+import { annotationReducer } from './stores/annotationStore';
 
 type Tool = 'select' | 'polygon';
 
@@ -31,6 +32,7 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedImage] = useImage(imageUrl);
   const [polygonPosition, setPolygonPosition] = useState({ x: 0, y: 0 });
+  const [annotations, dispatch] = useReducer(annotationReducer, []);
 
   const addToHistory = (newPoints: number[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -130,7 +132,7 @@ function App() {
     setPolygonPosition({ x: e.target.x(), y: e.target.y() });
   };
 
-  const handleShapeDragEnd = (e: KonvaEventObject<DragEvent>) => {
+  const handleShapeDragEnd = () => {
     setIsDraggingShape(false);
     const { x, y } = polygonPosition;
     // Apply the offset to all points
@@ -177,21 +179,42 @@ function App() {
     }
   };
 
+  const handleAddAnnotation = () => {
+    const name = `Annotation ${annotations.length + 1}`;
+    dispatch({ type: 'ADD_ANNOTATION', payload: { name, annotationType: 'POLYGON' } });
+  };
+
+  const handleAnnotationClick = (id: string) => {
+    dispatch({ type: 'SET_ACTIVE_ANNOTATION', payload: { id } });
+  };
+
+  useEffect(() => {
+    console.log(annotations);
+  }, [annotations]);
+
   return (
     <div className="grid grid-cols-12">
       <div className="col-span-3 min-h-screen border-r border-gray-200 p-4">
         <div className="flex flex-col gap-4">
           <div className="flex justify-between gap-2">
             <h1 className="text-lg font-bold">Annotations</h1>
-            <Button variant="success">
+            <Button variant="success" onClick={handleAddAnnotation}>
               <PiPlus />
               Add <span className="sr-only">annotation</span>
             </Button>
           </div>
-
-          <Annotation name="Annotation 1" type="POLYGON" />
-          <Annotation name="Annotation 2" type="DIRECTIONAL" />
-          <Annotation name="Annotation 3" type="POLYGON" />
+          {annotations.map((annotation) => (
+            <Annotation
+              dispatch={dispatch}
+              key={annotation.id}
+              id={annotation.id}
+              name={annotation.name}
+              type={annotation.type}
+              points={annotation.points}
+              isClosed={annotation.isClosed}
+              onClick={() => handleAnnotationClick(annotation.id)}
+            />
+          ))}
         </div>
       </div>
 

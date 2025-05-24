@@ -1,59 +1,110 @@
+import { useRef, useState, type Dispatch } from 'react';
+import type { Annotation, AnnotationAction } from '../../stores/annotationStore';
 import Button from '../atoms/Button';
+import { PiCircleNotch } from 'react-icons/pi';
 
-interface AnnotationProps {
-  name: string;
-  type: 'POLYGON' | 'DIRECTIONAL';
+interface AnnotationProps extends Annotation {
+  onClick?: () => void;
+  dispatch: Dispatch<AnnotationAction>;
 }
 
-export default function Annotation({ name, type }: AnnotationProps) {
+export default function Annotation({ name, id, type, onClick, dispatch }: AnnotationProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [_name, setTempName] = useState(name);
+  const [isSaving, setIsSaving] = useState(false);
+  const nameInput = useRef<HTMLInputElement>(null);
+
+  const handleOnClick = () => {
+    if (!isEditing) {
+      setIsEditing(true);
+    }
+    dispatch({ type: 'SET_ACTIVE_ANNOTATION', payload: { id } });
+    if (onClick) {
+      onClick();
+    }
+  };
+
+  const onCancelEdit = () => {
+    setIsEditing(false);
+    setTempName(name);
+  };
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setIsEditing(false);
+    const isValid = e.currentTarget.reportValidity();
+    if (!isValid) {
+      setIsSaving(false);
+      return;
+    }
+    const newName = nameInput.current?.value;
+    if (!newName) {
+      setIsSaving(false);
+      return;
+    }
+    setTempName(newName);
+
+    // simulate an API call to save this value
+    const savePromise = new Promise((resolve) => {
+      setTimeout(() => {
+        dispatch({ type: 'UPDATE_ANNOTATION_NAME', payload: { id, name: newName } });
+        resolve(true);
+      }, 1000);
+    });
+    await savePromise;
+    setIsSaving(false);
+    setIsEditing(false);
+  };
+
   return (
     <div className="flex flex-col gap-2 rounded-md border border-gray-200">
       {/* Annotation item */}
-      <div className="flex items-center gap-2 rounded-md p-2 hover:cursor-pointer hover:bg-gray-100">
-        <div className="h-2 w-2 rounded-full bg-green-500" />
-        <div className="flex flex-col">
+      <div
+        className={`flex items-center gap-2 rounded-t-md p-2 hover:cursor-pointer hover:bg-gray-100 ${
+          isEditing ? 'border-b border-gray-200 bg-gray-100' : ''
+        }`}
+        onClick={handleOnClick}
+      >
+        <div className="flex w-full flex-col">
           <p className="text-sm font-semibold">{name}</p>
-          <p className="text-xs text-gray-500">{type === 'POLYGON' ? 'Operational Area' : 'Direction'}</p>
+          <div className="flex justify-between">
+            <span className="text-xs text-gray-500">{type === 'POLYGON' ? 'Operational Area' : 'Direction'}</span>
+            {isSaving && (
+              <span className="flex items-center gap-1 text-xs text-gray-500">
+                <PiCircleNotch className="animate-spin" /> Saving
+              </span>
+            )}
+          </div>
         </div>
       </div>
       {/* EDITING INPUTS */}
-      <form className="flex flex-col gap-2 px-2 pb-4" onSubmit={(e) => e.preventDefault()}>
-        <div className="flex justify-between gap-1">
-          <label htmlFor="name" className="sr-only">
-            Annotation name
-          </label>
-          <input type="text" id="name" className="w-auto px-1 py-1 text-sm" value="Annotation name" required />
-          <div className="flex gap-1">
-            <Button variant="link-success" size="xs">
-              Save
-            </Button>
-            <Button variant="link-error" size="xs">
-              Cancel
-            </Button>
+      {isEditing && (
+        <form className="flex flex-col gap-2 px-2 pb-4" onSubmit={onSubmit}>
+          <div className="flex justify-between gap-1">
+            <label htmlFor="name" className="sr-only">
+              Annotation name
+            </label>
+            <input
+              type="text"
+              id="name"
+              value={_name}
+              onChange={(e) => setTempName(e.target.value)}
+              className="w-auto px-1 py-1 text-sm"
+              required
+              ref={nameInput}
+            />
+            <div className="flex gap-1">
+              <Button type="submit" variant="link-success" size="xs" disabled={isSaving}>
+                Save
+              </Button>
+              <Button type="button" variant="link-error" size="xs" onClick={onCancelEdit} disabled={isSaving}>
+                Cancel
+              </Button>
+            </div>
           </div>
-        </div>
-        <div className="flex justify-between gap-1">
-          <label htmlFor="area" className="sr-only">
-            Area type
-          </label>
-          <select id="area" className="px-1 py-1 text-sm">
-            <option value="OPERATIONAL_AREA">Operational Area</option>
-            <option value="PRODUCTION_LINE">Production Line</option>
-            <option value="ASSEMBLY_AREA">Assembly Area</option>
-            <option value="QUALITY_CONTROL">Quality Control</option>
-            <option value="STORAGE_ZONE">Storage Zone</option>
-            <option value="PACKAGING_AREA">Packaging Area</option>
-          </select>
-          <div className="flex gap-1">
-            <Button variant="link-success" size="xs">
-              Save
-            </Button>
-            <Button variant="link-error" size="xs">
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </form>
+        </form>
+      )}
       {/* EO Annotation item */}
     </div>
   );
