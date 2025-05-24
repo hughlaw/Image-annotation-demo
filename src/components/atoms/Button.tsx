@@ -1,16 +1,29 @@
-import { ButtonHTMLAttributes } from 'react';
+import { type ButtonHTMLAttributes } from 'react';
 import { twMerge } from 'tailwind-merge';
 
-type ButtonVariant = 'success' | 'error' | 'info' | 'link' | 'link-success' | 'link-error';
+type ButtonVariant = 'success' | 'error' | 'info' | 'default' | 'link' | 'link-success' | 'link-error';
 type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  isGrouped?: boolean;
+  groupPosition?: 'first' | 'last' | 'default';
+  isSelected?: boolean;
 }
 
-export default function Button({ variant = 'info', size = 'md', className, children, ...props }: ButtonProps) {
+export default function Button({
+  variant = 'default',
+  size = 'md',
+  isGrouped = false,
+  groupPosition = 'default',
+  isSelected = false,
+  className,
+  children,
+  ...props
+}: ButtonProps) {
   const variantStyles = {
+    default: 'bg-gray-100 border border-gray-200 hover:bg-gray-200 text-black',
     success: 'bg-green-500 hover:bg-green-600 text-white',
     error: 'bg-red-500 hover:bg-red-600 text-white',
     info: 'bg-blue-500 hover:bg-blue-600 text-white',
@@ -29,11 +42,30 @@ export default function Button({ variant = 'info', size = 'md', className, child
     lg: 'px-4 py-2 text-base',
   };
 
-  const baseStyles =
-    'flex items-center gap-1 rounded-md cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const groupStyles = {
+    first: 'rounded-r-none',
+    last: 'rounded-l-none',
+    default: '',
+  };
 
-  const classes = twMerge(baseStyles, variantStyles[variant], sizeStyles[size], className);
+  const isSelectedStyles = {
+    true: 'bg-blue-200',
+    false: '',
+  };
 
+  const baseStyles = 'flex items-center gap-1 rounded-md cursor-pointer transition-colors duration-200';
+
+  const focusStyles = isGrouped ? '' : 'focus:outline-none focus:ring-2 focus:ring-offset-2';
+
+  const classes = twMerge(
+    baseStyles,
+    variantStyles[variant],
+    sizeStyles[size],
+    groupStyles[groupPosition],
+    isSelectedStyles[isSelected ? 'true' : 'false'],
+    focusStyles,
+    className
+  );
   return (
     <button className={classes} {...props}>
       {children}
