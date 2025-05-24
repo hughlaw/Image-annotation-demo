@@ -1,14 +1,19 @@
 import Button from '../atoms/Button';
 
-export default function Annotation() {
+interface AnnotationProps {
+  name: string;
+  type: 'POLYGON' | 'DIRECTIONAL';
+}
+
+export default function Annotation({ name, type }: AnnotationProps) {
   return (
     <div className="flex flex-col gap-2 rounded-md border border-gray-200">
       {/* Annotation item */}
       <div className="flex items-center gap-2 rounded-md p-2 hover:cursor-pointer hover:bg-gray-100">
         <div className="h-2 w-2 rounded-full bg-green-500" />
         <div className="flex flex-col">
-          <p className="text-sm font-semibold">Annotation name</p>
-          <p className="text-xs text-gray-500">Operational Area</p>
+          <p className="text-sm font-semibold">{name}</p>
+          <p className="text-xs text-gray-500">{type === 'POLYGON' ? 'Operational Area' : 'Direction'}</p>
         </div>
       </div>
       {/* EDITING INPUTS */}

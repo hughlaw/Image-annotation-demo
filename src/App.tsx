@@ -100,6 +100,10 @@ function App() {
     }
   };
 
+  const handleExportPNG = () => {
+    console.debug('Exporting PNG');
+  };
+
   const handlePointDragStart = (index: number) => {
     setDraggedPointIndex(index);
   };
@@ -185,7 +189,9 @@ function App() {
             </Button>
           </div>
 
-          <Annotation />
+          <Annotation name="Annotation 1" type="POLYGON" />
+          <Annotation name="Annotation 2" type="DIRECTIONAL" />
+          <Annotation name="Annotation 3" type="POLYGON" />
         </div>
       </div>
 
@@ -200,39 +206,52 @@ function App() {
               className="hidden"
               id="imageUpload"
             />
-            <Button variant="info" onClick={handleUploadClick}>
+            <Button variant="default" onClick={handleUploadClick}>
               <PiImage /> {fileName ? 'Change Image' : 'Upload Image'}
             </Button>
             {fileName && <span className="text-sm text-gray-600">{fileName}</span>}
           </div>
 
           <div className="flex gap-1">
-            <Button variant="info" onClick={handleUndo} disabled={historyIndex <= 0}>
-              <PiArrowCounterClockwise /> Undo
+            <Button variant="default" onClick={handleExportPNG} disabled={points.length === 0}>
+              <PiImage /> Export as PNG
             </Button>
-            <Button variant="info" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
-              <PiArrowClockwise /> Redo
-            </Button>
-            <Button variant="info" onClick={handleExportCoordinates} disabled={points.length === 0}>
+            <Button variant="default" onClick={handleExportCoordinates} disabled={points.length === 0}>
               <PiExport /> Export coordinates
             </Button>
           </div>
         </div>
 
         {/* Toolbar */}
-        <div className="mb-4 flex gap-2">
-          <button
-            className={`rounded-sm border p-2 ${currentTool === 'select' ? 'border-blue-200 bg-blue-100' : 'border-gray-200 bg-gray-100'}`}
-            onClick={() => handleToolSelect('select')}
-          >
-            <PiArrowUpRight />
-          </button>
-          <button
-            className={`rounded-sm border p-2 ${currentTool === 'polygon' ? 'border-blue-200 bg-blue-100' : 'border-gray-200 bg-gray-100'}`}
-            onClick={() => handleToolSelect('polygon')}
-          >
-            <PiPolygon />
-          </button>
+        <div className="mb-4 flex justify-between gap-2">
+          <div className="flex">
+            <Button
+              variant="default"
+              isGrouped
+              groupPosition="first"
+              onClick={() => handleToolSelect('select')}
+              isSelected={currentTool === 'select'}
+            >
+              <PiArrowUpRight />
+            </Button>
+            <Button
+              variant="default"
+              isGrouped
+              groupPosition="last"
+              onClick={() => handleToolSelect('polygon')}
+              isSelected={currentTool === 'polygon'}
+            >
+              <PiPolygon />
+            </Button>
+          </div>
+          <div className="flex gap-1">
+            <Button variant="default" onClick={handleUndo} disabled={historyIndex <= 0}>
+              <PiArrowCounterClockwise /> Undo
+            </Button>
+            <Button variant="default" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
+              <PiArrowClockwise /> Redo
+            </Button>
+          </div>
         </div>
 
         <Stage width={800} height={600} onClick={handleStageClick} ref={stageRef} className="border border-gray-200">
