@@ -6,10 +6,11 @@ export interface Annotation {
   type: AnnotationType;
   points: number[];
   isClosed: boolean;
+  isActive?: boolean;
 }
 
 export type AnnotationAction =
-  | { type: 'ADD_ANNOTATION'; payload: { name: string; annotationType: AnnotationType } }
+  | { type: 'ADD_ANNOTATION'; payload: { id: string; name: string; annotationType: AnnotationType } }
   | { type: 'UPDATE_ANNOTATION_NAME'; payload: { id: string; name: string } }
   | { type: 'UPDATE_ANNOTATION_POINTS'; payload: { id: string; points: number[] } }
   | { type: 'REMOVE_ANNOTATION'; payload: { id: string } }
@@ -21,7 +22,7 @@ export function annotationReducer(state: Annotation[], action: AnnotationAction)
       return [
         ...state,
         {
-          id: crypto.randomUUID(),
+          id: action.payload.id,
           name: action.payload.name,
           type: action.payload.annotationType,
           points: [],

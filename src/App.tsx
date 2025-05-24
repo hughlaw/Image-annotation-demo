@@ -33,6 +33,7 @@ function App() {
   const [uploadedImage] = useImage(imageUrl);
   const [polygonPosition, setPolygonPosition] = useState({ x: 0, y: 0 });
   const [annotations, dispatch] = useReducer(annotationReducer, []);
+  const [unsavedChanges, setUnsavedChanges] = useState<Record<string, number[]>>({});
 
   const addToHistory = (newPoints: number[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -76,7 +77,28 @@ function App() {
   };
 
   const handleStageClick = (e: KonvaEventObject<MouseEvent>) => {
-    if (currentTool !== 'polygon' || draggedPointIndex !== null || isDraggingShape) return;
+    // If we clicked on a polygon, make it active
+    if (e.target !== e.target.getStage()) {
+      const clickedAnnotation = annotations.find(
+        (ann) =>
+          ann.points.length > 0 &&
+          e.target.getClassName() === 'Line' &&
+          e.target.getAttr('data-annotation-id') === ann.id
+      );
+      if (clickedAnnotation) {
+        handleAnnotationClick(clickedAnnotation.id);
+        return;
+      }
+    }
+
+    // Don't allow drawing if no annotation is active
+    if (
+      currentTool !== 'polygon' ||
+      draggedPointIndex !== null ||
+      isDraggingShape ||
+      !annotations.some((ann) => ann.isActive)
+    )
+      return;
 
     const stage = e.target.getStage();
     const point = stage?.getPointerPosition();
@@ -115,6 +137,15 @@ function App() {
     newPoints[index * 2] = e.target.x();
     newPoints[index * 2 + 1] = e.target.y();
     setPoints(newPoints);
+
+    // Store unsaved changes
+    const activeAnnotation = annotations.find((ann) => ann.isActive);
+    if (activeAnnotation) {
+      setUnsavedChanges((prev) => ({
+        ...prev,
+        [activeAnnotation.id]: newPoints,
+      }));
+    }
   };
 
   const handlePointDragEnd = () => {
@@ -140,6 +171,15 @@ function App() {
     setPoints(newPoints);
     setPolygonPosition({ x: 0, y: 0 });
     addToHistory(newPoints);
+
+    // Store unsaved changes
+    const activeAnnotation = annotations.find((ann) => ann.isActive);
+    if (activeAnnotation) {
+      setUnsavedChanges((prev) => ({
+        ...prev,
+        [activeAnnotation.id]: newPoints,
+      }));
+    }
   };
 
   const handlePointContextMenu = (index: number, e: KonvaEventObject<MouseEvent>) => {
@@ -181,11 +221,46 @@ function App() {
 
   const handleAddAnnotation = () => {
     const name = `Annotation ${annotations.length + 1}`;
-    dispatch({ type: 'ADD_ANNOTATION', payload: { name, annotationType: 'POLYGON' } });
+    const id = crypto.randomUUID();
+    dispatch({ type: 'ADD_ANNOTATION', payload: { id, name, annotationType: 'POLYGON' } });
+    dispatch({ type: 'SET_ACTIVE_ANNOTATION', payload: { id } });
   };
 
   const handleAnnotationClick = (id: string) => {
     dispatch({ type: 'SET_ACTIVE_ANNOTATION', payload: { id } });
+    // Load the points of the selected annotation, either from unsaved changes or original points
+    const selectedAnnotation = annotations.find((ann) => ann.id === id);
+    if (selectedAnnotation) {
+      const pointsToLoad = unsavedChanges[id] || selectedAnnotation.points;
+      setPoints(pointsToLoad);
+      setIsDrawing(false);
+      addToHistory(pointsToLoad);
+    } else {
+      setPoints([]);
+      setIsDrawing(true);
+      addToHistory([]);
+    }
+  };
+
+  const handleSaveAnnotation = () => {
+    if (points.length > 0) {
+      const activeAnnotation = annotations.find((ann) => ann.isActive);
+      if (activeAnnotation) {
+        dispatch({
+          type: 'UPDATE_ANNOTATION_POINTS',
+          payload: {
+            id: activeAnnotation.id,
+            points: [...points],
+          },
+        });
+        // Reset the current drawing state
+        setPoints([]);
+        setIsDrawing(false);
+        addToHistory([]);
+        // Clear active annotation
+        dispatch({ type: 'SET_ACTIVE_ANNOTATION', payload: { id: '' } });
+      }
+    }
   };
 
   useEffect(() => {
@@ -211,8 +286,8 @@ function App() {
               name={annotation.name}
               type={annotation.type}
               points={annotation.points}
+              isActive={annotation.isActive}
               isClosed={annotation.isClosed}
-              onClick={() => handleAnnotationClick(annotation.id)}
             />
           ))}
         </div>
@@ -274,52 +349,78 @@ function App() {
             <Button variant="default" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
               <PiArrowClockwise /> Redo
             </Button>
+            <Button
+              variant="success"
+              onClick={handleSaveAnnotation}
+              disabled={points.length === 0 || !annotations.some((ann) => ann.isActive)}
+            >
+              Save Annotation
+            </Button>
           </div>
         </div>
 
         <Stage width={800} height={600} onClick={handleStageClick} ref={stageRef} className="border border-gray-200">
           <Layer>
             {uploadedImage && <Image image={uploadedImage} width={800} height={600} fit="contain" />}
-            {points.length > 0 && (
-              <>
-                <Line
-                  points={points}
-                  stroke="#000000"
-                  strokeWidth={2}
-                  closed={!isDrawing}
-                  fill={!isDrawing ? 'rgba(0,0,0,0.1)' : undefined}
-                  draggable={!isDrawing}
-                  x={polygonPosition.x}
-                  y={polygonPosition.y}
-                  onDragStart={handleShapeDragStart}
-                  onDragMove={handleShapeDragMove}
-                  onDragEnd={handleShapeDragEnd}
-                />
-                {/* Draw points */}
-                {points.map((point, i) => {
-                  if (i % 2 === 0) {
-                    const pointIndex = i / 2;
-                    return (
-                      <Circle
-                        key={i}
-                        x={point + polygonPosition.x}
-                        y={points[i + 1] + polygonPosition.y}
-                        radius={4}
-                        fill="#000000"
-                        stroke="#ffffff"
-                        strokeWidth={1}
-                        draggable
-                        onDragStart={() => handlePointDragStart(pointIndex)}
-                        onDragMove={(e) => handlePointDragMove(pointIndex, e)}
-                        onDragEnd={handlePointDragEnd}
-                        onContextMenu={(e) => handlePointContextMenu(pointIndex, e)}
+
+            {/* Show all annotations when none are active, or only the active annotation */}
+            {!annotations.some((ann) => ann.isActive)
+              ? // Show all annotations when none are active
+                annotations.map(
+                  (annotation) =>
+                    annotation.points.length > 0 && (
+                      <Line
+                        key={annotation.id}
+                        points={annotation.points}
+                        stroke="#00FF00"
+                        strokeWidth={2}
+                        closed={true}
+                        fill="rgba(0,255,0,0.25)"
+                        data-annotation-id={annotation.id}
                       />
-                    );
-                  }
-                  return null;
-                })}
-              </>
-            )}
+                    )
+                )
+              : // Show only the active annotation's points
+                points.length > 0 && (
+                  <>
+                    <Line
+                      points={points}
+                      stroke="#0000ff"
+                      strokeWidth={2}
+                      closed={!isDrawing}
+                      fill={!isDrawing ? 'rgba(0,0,0,0.1)' : undefined}
+                      draggable={!isDrawing}
+                      x={polygonPosition.x}
+                      y={polygonPosition.y}
+                      onDragStart={handleShapeDragStart}
+                      onDragMove={handleShapeDragMove}
+                      onDragEnd={handleShapeDragEnd}
+                    />
+                    {/* Draw points */}
+                    {points.map((point, i) => {
+                      if (i % 2 === 0) {
+                        const pointIndex = i / 2;
+                        return (
+                          <Circle
+                            key={i}
+                            x={point + polygonPosition.x}
+                            y={points[i + 1] + polygonPosition.y}
+                            radius={4}
+                            fill="#000000"
+                            stroke="#ffffff"
+                            strokeWidth={1}
+                            draggable={!isDrawing}
+                            onDragStart={() => handlePointDragStart(pointIndex)}
+                            onDragMove={(e) => handlePointDragMove(pointIndex, e)}
+                            onDragEnd={handlePointDragEnd}
+                            onContextMenu={(e) => handlePointContextMenu(pointIndex, e)}
+                          />
+                        );
+                      }
+                      return null;
+                    })}
+                  </>
+                )}
           </Layer>
         </Stage>
       </div>

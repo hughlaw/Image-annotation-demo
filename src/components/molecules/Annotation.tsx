@@ -1,24 +1,25 @@
 import { useRef, useState, type Dispatch } from 'react';
 import type { Annotation, AnnotationAction } from '../../stores/annotationStore';
 import Button from '../atoms/Button';
-import { PiCircleNotch } from 'react-icons/pi';
+import { PiCircleNotch, PiPencil } from 'react-icons/pi';
 
 interface AnnotationProps extends Annotation {
   onClick?: () => void;
   dispatch: Dispatch<AnnotationAction>;
 }
 
-export default function Annotation({ name, id, type, onClick, dispatch }: AnnotationProps) {
+export default function Annotation({ name, id, type, isActive, onClick, dispatch }: AnnotationProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [_name, setTempName] = useState(name);
   const [isSaving, setIsSaving] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
 
   const handleOnClick = () => {
-    if (!isEditing) {
-      setIsEditing(true);
+    if (isActive) {
+      dispatch({ type: 'SET_ACTIVE_ANNOTATION', payload: { id: '' } });
+    } else {
+      dispatch({ type: 'SET_ACTIVE_ANNOTATION', payload: { id } });
     }
-    dispatch({ type: 'SET_ACTIVE_ANNOTATION', payload: { id } });
     if (onClick) {
       onClick();
     }
@@ -50,24 +51,36 @@ export default function Annotation({ name, id, type, onClick, dispatch }: Annota
       setTimeout(() => {
         dispatch({ type: 'UPDATE_ANNOTATION_NAME', payload: { id, name: newName } });
         resolve(true);
-      }, 1000);
+      }, 400);
     });
     await savePromise;
     setIsSaving(false);
     setIsEditing(false);
   };
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the parent click handler
+    setIsEditing(true);
+  };
+
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-gray-200">
+    <div className={`flex flex-col gap-2 rounded-md border border-gray-200`}>
       {/* Annotation item */}
       <div
-        className={`flex items-center gap-2 rounded-t-md p-2 hover:cursor-pointer hover:bg-gray-100 ${
+        className={`flex items-center gap-2 rounded-t-md p-2 hover:cursor-pointer hover:bg-gray-100 ${isActive ? '!bg-blue-100' : ''} ${
           isEditing ? 'border-b border-gray-200 bg-gray-100' : ''
         }`}
         onClick={handleOnClick}
       >
         <div className="flex w-full flex-col">
-          <p className="text-sm font-semibold">{name}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold">{name}</p>
+            {!isEditing && (
+              <Button variant="link" size="xs" onClick={handleEditClick} className="text-gray-500 hover:text-gray-700">
+                <PiPencil className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
           <div className="flex justify-between">
             <span className="text-xs text-gray-500">{type === 'POLYGON' ? 'Operational Area' : 'Direction'}</span>
             {isSaving && (
