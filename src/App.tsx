@@ -10,20 +10,20 @@ import {
 import './App.css';
 import Button from './components/atoms/Button';
 import Annotation from './components/molecules/Annotation';
-import { Layer, Stage, Image, Line, Circle } from 'react-konva';
+import { Layer, Stage, Image, Line, Circle, Arrow } from 'react-konva';
 import { useState, useRef, useReducer, useEffect } from 'react';
 import useImage from 'use-image';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { annotationReducer } from './stores/annotationStore';
 
-type Tool = 'select' | 'polygon';
+type Tool = 'directional' | 'polygon';
 
 function App() {
   const [imageUrl, setImageUrl] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
   const [points, setPoints] = useState<number[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentTool, setCurrentTool] = useState<Tool>('select');
+  const [currentTool, setCurrentTool] = useState<Tool>('directional');
   const [draggedPointIndex, setDraggedPointIndex] = useState<number | null>(null);
   const [isDraggingShape, setIsDraggingShape] = useState(false);
   const [history, setHistory] = useState<number[][]>([[]]);
@@ -77,12 +77,12 @@ function App() {
   };
 
   const handleStageClick = (e: KonvaEventObject<MouseEvent>) => {
-    // If we clicked on a polygon, make it active
+    // If we clicked on a polygon or directional line, make it active
     if (e.target !== e.target.getStage()) {
       const clickedAnnotation = annotations.find(
         (ann) =>
           ann.points.length > 0 &&
-          e.target.getClassName() === 'Line' &&
+          (e.target.getClassName() === 'Line' || e.target.getClassName() === 'Arrow') &&
           e.target.getAttr('data-annotation-id') === ann.id
       );
       if (clickedAnnotation) {
@@ -92,28 +92,27 @@ function App() {
     }
 
     // Don't allow drawing if no annotation is active
-    if (
-      currentTool !== 'polygon' ||
-      draggedPointIndex !== null ||
-      isDraggingShape ||
-      !annotations.some((ann) => ann.isActive)
-    )
-      return;
+    if (draggedPointIndex !== null || isDraggingShape || !annotations.some((ann) => ann.isActive)) return;
 
     const stage = e.target.getStage();
     const point = stage?.getPointerPosition();
 
     if (stage && point) {
-      // Check if we're clicking near the first point to close the polygon
-      if (points.length >= 4) {
-        // At least 2 points (4 coordinates)
-        const firstPoint = { x: points[0], y: points[1] };
-        const distance = Math.sqrt(Math.pow(point.x - firstPoint.x, 2) + Math.pow(point.y - firstPoint.y, 2));
+      const activeAnnotation = annotations.find((ann) => ann.isActive);
+      if (!activeAnnotation) return;
 
-        if (distance < 10) {
-          // If within 10 pixels of first point
-          setIsDrawing(false);
-          return;
+      if (activeAnnotation.type === 'DIRECTIONAL') {
+        // For directional annotations, limit to 2 points
+        if (points.length >= 4) return;
+      } else {
+        // For polygon annotations, check if we're clicking near the first point to close
+        if (points.length >= 4) {
+          const firstPoint = { x: points[0], y: points[1] };
+          const distance = Math.sqrt(Math.pow(point.x - firstPoint.x, 2) + Math.pow(point.y - firstPoint.y, 2));
+          if (distance < 10) {
+            setIsDrawing(false);
+            return;
+          }
         }
       }
 
@@ -121,6 +120,11 @@ function App() {
       setPoints(newPoints);
       addToHistory(newPoints);
       setIsDrawing(true);
+
+      // If we've added 2 points for a directional annotation, stop drawing
+      if (activeAnnotation.type === 'DIRECTIONAL' && newPoints.length === 4) {
+        setIsDrawing(false);
+      }
     }
   };
 
@@ -210,19 +214,36 @@ function App() {
 
   const handleToolSelect = (tool: Tool) => {
     setCurrentTool(tool);
+    // Update the active annotation's type if one is selected
+    const activeAnnotation = annotations.find((ann) => ann.isActive);
+    if (activeAnnotation) {
+      dispatch({
+        type: 'UPDATE_ANNOTATION_TYPE',
+        payload: { id: activeAnnotation.id, type: tool === 'directional' ? 'DIRECTIONAL' : 'POLYGON' },
+      });
+    }
     if (tool === 'polygon') {
       setPoints([]);
       addToHistory([]);
       setIsDrawing(true);
     } else {
-      setIsDrawing(false);
+      setPoints([]);
+      addToHistory([]);
+      setIsDrawing(true);
     }
   };
 
   const handleAddAnnotation = () => {
     const name = `Annotation ${annotations.length + 1}`;
     const id = crypto.randomUUID();
-    dispatch({ type: 'ADD_ANNOTATION', payload: { id, name, annotationType: 'POLYGON' } });
+    dispatch({
+      type: 'ADD_ANNOTATION',
+      payload: {
+        id,
+        name,
+        annotationType: currentTool === 'directional' ? 'DIRECTIONAL' : 'POLYGON',
+      },
+    });
     dispatch({ type: 'SET_ACTIVE_ANNOTATION', payload: { id } });
   };
 
@@ -288,6 +309,7 @@ function App() {
               points={annotation.points}
               isActive={annotation.isActive}
               isClosed={annotation.isClosed}
+              onClick={() => handleAnnotationClick(annotation.id)}
             />
           ))}
         </div>
@@ -327,8 +349,8 @@ function App() {
               variant="default"
               isGrouped
               groupPosition="first"
-              onClick={() => handleToolSelect('select')}
-              isSelected={currentTool === 'select'}
+              onClick={() => handleToolSelect('directional')}
+              isSelected={currentTool === 'directional'}
             >
               <PiArrowUpRight />
             </Button>
@@ -366,36 +388,73 @@ function App() {
             {/* Show all annotations when none are active, or only the active annotation */}
             {!annotations.some((ann) => ann.isActive)
               ? // Show all annotations when none are active
-                annotations.map(
-                  (annotation) =>
-                    annotation.points.length > 0 && (
-                      <Line
+                annotations.map((annotation) => {
+                  if (annotation.points.length === 0) return null;
+
+                  if (annotation.type === 'DIRECTIONAL') {
+                    return (
+                      <Arrow
                         key={annotation.id}
                         points={annotation.points}
                         stroke="#00FF00"
                         strokeWidth={2}
-                        closed={true}
-                        fill="rgba(0,255,0,0.25)"
+                        fill="#00FF00"
+                        pointerLength={10}
+                        pointerWidth={10}
                         data-annotation-id={annotation.id}
+                        draggable
+                        onDragStart={handleShapeDragStart}
+                        onDragMove={handleShapeDragMove}
+                        onDragEnd={handleShapeDragEnd}
                       />
-                    )
-                )
+                    );
+                  }
+
+                  return (
+                    <Line
+                      key={annotation.id}
+                      points={annotation.points}
+                      stroke="#00FF00"
+                      strokeWidth={2}
+                      closed={true}
+                      fill="rgba(0,255,0,0.25)"
+                      data-annotation-id={annotation.id}
+                    />
+                  );
+                })
               : // Show only the active annotation's points
                 points.length > 0 && (
                   <>
-                    <Line
-                      points={points}
-                      stroke="#0000ff"
-                      strokeWidth={2}
-                      closed={!isDrawing}
-                      fill={!isDrawing ? 'rgba(0,0,0,0.1)' : undefined}
-                      draggable={!isDrawing}
-                      x={polygonPosition.x}
-                      y={polygonPosition.y}
-                      onDragStart={handleShapeDragStart}
-                      onDragMove={handleShapeDragMove}
-                      onDragEnd={handleShapeDragEnd}
-                    />
+                    {annotations.find((ann) => ann.isActive)?.type === 'DIRECTIONAL' ? (
+                      <Arrow
+                        points={points}
+                        stroke="#0000ff"
+                        strokeWidth={2}
+                        fill="#0000ff"
+                        pointerLength={10}
+                        pointerWidth={10}
+                        draggable={!isDrawing}
+                        x={polygonPosition.x}
+                        y={polygonPosition.y}
+                        onDragStart={handleShapeDragStart}
+                        onDragMove={handleShapeDragMove}
+                        onDragEnd={handleShapeDragEnd}
+                      />
+                    ) : (
+                      <Line
+                        points={points}
+                        stroke="#0000ff"
+                        strokeWidth={2}
+                        closed={!isDrawing}
+                        fill={!isDrawing ? 'rgba(0,0,0,0.1)' : undefined}
+                        draggable={!isDrawing}
+                        x={polygonPosition.x}
+                        y={polygonPosition.y}
+                        onDragStart={handleShapeDragStart}
+                        onDragMove={handleShapeDragMove}
+                        onDragEnd={handleShapeDragEnd}
+                      />
+                    )}
                     {/* Draw points */}
                     {points.map((point, i) => {
                       if (i % 2 === 0) {

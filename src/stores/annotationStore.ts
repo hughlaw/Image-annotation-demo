@@ -14,7 +14,8 @@ export type AnnotationAction =
   | { type: 'UPDATE_ANNOTATION_NAME'; payload: { id: string; name: string } }
   | { type: 'UPDATE_ANNOTATION_POINTS'; payload: { id: string; points: number[] } }
   | { type: 'REMOVE_ANNOTATION'; payload: { id: string } }
-  | { type: 'SET_ACTIVE_ANNOTATION'; payload: { id: string } };
+  | { type: 'SET_ACTIVE_ANNOTATION'; payload: { id: string } }
+  | { type: 'UPDATE_ANNOTATION_TYPE'; payload: { id: string; type: AnnotationType } };
 
 export function annotationReducer(state: Annotation[], action: AnnotationAction): Annotation[] {
   switch (action.type) {
@@ -39,6 +40,8 @@ export function annotationReducer(state: Annotation[], action: AnnotationAction)
       return state.map((ann) =>
         ann.id === action.payload.id ? { ...ann, isActive: true } : { ...ann, isActive: false }
       );
+    case 'UPDATE_ANNOTATION_TYPE':
+      return state.map((ann) => (ann.id === action.payload.id ? { ...ann, type: action.payload.type } : ann));
     default:
       return state;
   }

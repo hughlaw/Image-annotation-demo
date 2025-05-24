@@ -1,7 +1,7 @@
 import { useRef, useState, type Dispatch } from 'react';
 import type { Annotation, AnnotationAction } from '../../stores/annotationStore';
 import Button from '../atoms/Button';
-import { PiCircleNotch, PiPencil } from 'react-icons/pi';
+import { PiCircleNotch, PiPencil, PiTrash } from 'react-icons/pi';
 
 interface AnnotationProps extends Annotation {
   onClick?: () => void;
@@ -12,14 +12,10 @@ export default function Annotation({ name, id, type, isActive, onClick, dispatch
   const [isEditing, setIsEditing] = useState(false);
   const [_name, setTempName] = useState(name);
   const [isSaving, setIsSaving] = useState(false);
+  const deleteModal = useRef<HTMLDialogElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
 
   const handleOnClick = () => {
-    if (isActive) {
-      dispatch({ type: 'SET_ACTIVE_ANNOTATION', payload: { id: '' } });
-    } else {
-      dispatch({ type: 'SET_ACTIVE_ANNOTATION', payload: { id } });
-    }
     if (onClick) {
       onClick();
     }
@@ -63,6 +59,12 @@ export default function Annotation({ name, id, type, isActive, onClick, dispatch
     setIsEditing(true);
   };
 
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the parent click handler
+    // dispatch({ type: 'REMOVE_ANNOTATION', payload: { id } });
+    deleteModal.current?.showModal();
+  };
+
   return (
     <div className={`flex flex-col gap-2 rounded-md border border-gray-200`}>
       {/* Annotation item */}
@@ -75,11 +77,26 @@ export default function Annotation({ name, id, type, isActive, onClick, dispatch
         <div className="flex w-full flex-col">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold">{name}</p>
-            {!isEditing && (
-              <Button variant="link" size="xs" onClick={handleEditClick} className="text-gray-500 hover:text-gray-700">
-                <PiPencil className="h-4 w-4" />
+            <div className="flex gap-1">
+              {!isEditing && (
+                <Button
+                  variant="link"
+                  size="xs"
+                  onClick={handleEditClick}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <PiPencil className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="link-error"
+                size="xs"
+                onClick={handleDeleteClick}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <PiTrash className="h-4 w-4" />
               </Button>
-            )}
+            </div>
           </div>
           <div className="flex justify-between">
             <span className="text-xs text-gray-500">{type === 'POLYGON' ? 'Operational Area' : 'Direction'}</span>
@@ -118,6 +135,35 @@ export default function Annotation({ name, id, type, isActive, onClick, dispatch
           </div>
         </form>
       )}
+
+      <dialog
+        ref={deleteModal}
+        className="mx-auto mt-4 rounded-md border border-gray-200 p-4 shadow-md transition-all duration-300 backdrop:bg-black/40 backdrop:backdrop-blur-[2px]"
+      >
+        <div className="flex flex-col gap-2">
+          <h2 className="text-lg font-semibold">Delete Annotation</h2>
+          <p className="text-sm text-gray-500">Are you sure you want to delete this annotation?</p>
+          <div className="flex justify-between gap-2">
+            <Button
+              variant="default"
+              onClick={() => {
+                deleteModal.current?.close();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="error"
+              onClick={() => {
+                dispatch({ type: 'REMOVE_ANNOTATION', payload: { id } });
+                deleteModal.current?.close();
+              }}
+            >
+              I'm sure, delete it
+            </Button>
+          </div>
+        </div>
+      </dialog>
       {/* EO Annotation item */}
     </div>
   );
