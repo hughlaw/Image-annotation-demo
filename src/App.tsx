@@ -6,6 +6,7 @@ import {
   PiPolygon,
   PiArrowCounterClockwise,
   PiArrowClockwise,
+  PiUpload,
 } from 'react-icons/pi';
 import './App.css';
 import Button from './components/atoms/Button';
@@ -16,6 +17,7 @@ import useImage from 'use-image';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Stage as StageType } from 'konva/lib/Stage';
 import { annotationReducer } from './stores/annotationStore';
+import Alert from './components/atoms/Alert';
 
 type Tool = 'directional' | 'polygon';
 
@@ -35,9 +37,9 @@ function App() {
   const [polygonPosition, setPolygonPosition] = useState({ x: 0, y: 0 });
   const [annotations, dispatch] = useReducer(annotationReducer, []);
   const [unsavedChanges, setUnsavedChanges] = useState<Record<string, number[]>>({});
-  const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [scale, setScale] = useState(1);
-  const [originalSize, setOriginalSize] = useState({ width: 800, height: 600 });
+  const [originalSize, setOriginalSize] = useState({ width: 0, height: 0 });
   const [isTouching, setIsTouching] = useState(false);
   const [touchStartPos, setTouchStartPos] = useState({ x: 0, y: 0 });
 
@@ -183,7 +185,6 @@ function App() {
       const annotationId = target.getAttr('data-annotation-id');
       if (annotationId) {
         const annotation = annotations.find((ann) => ann.id === annotationId);
-        console.debug({ annotation });
 
         if (annotation) {
           handleAnnotationClick(annotation.id);
@@ -306,8 +307,6 @@ function App() {
   };
 
   const handleShapeDragMove = (e: KonvaEventObject<DragEvent>) => {
-    console.debug({ x: e.target.x(), y: e.target.y() });
-
     setPolygonPosition({ x: e.target.x(), y: e.target.y() });
   };
 
@@ -463,18 +462,19 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    console.log(annotations);
-  }, [annotations]);
+  // useEffect(() => {
+  //   console.log(annotations);
+  // }, [annotations]);
 
   // Add resize handler
   useEffect(() => {
     const handleResize = () => {
       const container = document.querySelector('.stage-container');
-      if (container) {
+      if (container && originalSize.width > 0) {
         const { width } = container.getBoundingClientRect();
-        // Maintain aspect ratio of 4:3
-        const height = (width * 3) / 4;
+        // Calculate height based on image's aspect ratio
+        const aspectRatio = originalSize.height / originalSize.width;
+        const height = width * aspectRatio;
         setStageSize({ width, height });
 
         // Calculate scale factor based on original size
@@ -486,7 +486,7 @@ function App() {
     handleResize(); // Initial size
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [originalSize.width]);
+  }, [originalSize.width, originalSize.height]);
 
   // Update original size when image is loaded
   useEffect(() => {
@@ -509,6 +509,24 @@ function App() {
               Add <span className="sr-only">annotation</span>
             </Button>
           </div>
+          {!imageUrl && (
+            <Alert variant="info" title="No image uploaded">
+              <p>Upload an image to start annotating</p>
+              <Button variant="info" className="mt-2" onClick={handleUploadClick}>
+                <PiUpload />
+                Upload image
+              </Button>
+            </Alert>
+          )}
+          {imageUrl && annotations.length === 0 && (
+            <Alert variant="info" title="No annotations">
+              <p>Add an annotation to the image to get started</p>
+              <Button variant="success" className="mt-2" onClick={handleAddAnnotation}>
+                <PiPlus />
+                Add annotation
+              </Button>
+            </Alert>
+          )}
           {annotations.map((annotation) => (
             <Annotation
               dispatch={dispatch}
@@ -537,7 +555,7 @@ function App() {
               id="imageUpload"
             />
             <Button variant={imageUrl ? 'default' : 'info'} onClick={handleUploadClick}>
-              <PiImage /> {fileName ? 'Change Image' : 'Upload Image'}
+              {imageUrl ? <PiImage /> : <PiUpload />} {fileName ? 'Change Image' : 'Upload Image'}
             </Button>
             {fileName && <span className="text-sm text-gray-600">{fileName}</span>}
           </div>
@@ -598,38 +616,54 @@ function App() {
         </div>
 
         <div className="stage-container w-full">
-          <Stage
-            width={stageSize.width}
-            height={stageSize.height}
-            onClick={handleStageClick}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            ref={stageRef}
-            className="border border-gray-200"
-            scale={{ x: scale, y: scale }}
-          >
-            <Layer>
-              {uploadedImage && (
+          {uploadedImage && (
+            <Stage
+              width={stageSize.width}
+              height={stageSize.height}
+              onClick={handleStageClick}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              ref={stageRef}
+              className="border border-gray-200"
+              scale={{ x: scale, y: scale }}
+            >
+              <Layer>
                 <Image image={uploadedImage} width={originalSize.width} height={originalSize.height} fit="contain" />
-              )}
 
-              {/* Show all annotations when none are active, or only the active annotation */}
-              {!annotations.some((ann) => ann.isActive)
-                ? // Show all annotations when none are active
-                  annotations.map((annotation) => {
-                    if (annotation.points.length === 0) return null;
+                {/* Show all annotations when none are active, or only the active annotation */}
+                {!annotations.some((ann) => ann.isActive)
+                  ? // Show all annotations when none are active
+                    annotations.map((annotation) => {
+                      if (annotation.points.length === 0) return null;
 
-                    if (annotation.type === 'DIRECTIONAL') {
+                      if (annotation.type === 'DIRECTIONAL') {
+                        return (
+                          <Arrow
+                            key={annotation.id}
+                            points={annotation.points}
+                            stroke="#00FF00"
+                            strokeWidth={2 / scale}
+                            fill="#00FF00"
+                            pointerLength={10 / scale}
+                            pointerWidth={10 / scale}
+                            data-annotation-id={annotation.id}
+                            draggable
+                            onDragStart={handleShapeDragStart}
+                            onDragMove={handleShapeDragMove}
+                            onDragEnd={handleShapeDragEnd}
+                          />
+                        );
+                      }
+
                       return (
-                        <Arrow
+                        <Line
                           key={annotation.id}
                           points={annotation.points}
                           stroke="#00FF00"
                           strokeWidth={2 / scale}
-                          fill="#00FF00"
-                          pointerLength={10 / scale}
-                          pointerWidth={10 / scale}
+                          closed={true}
+                          fill="rgba(0,255,0,0.25)"
                           data-annotation-id={annotation.id}
                           draggable
                           onDragStart={handleShapeDragStart}
@@ -637,87 +671,71 @@ function App() {
                           onDragEnd={handleShapeDragEnd}
                         />
                       );
-                    }
-
-                    return (
-                      <Line
-                        key={annotation.id}
-                        points={annotation.points}
-                        stroke="#00FF00"
-                        strokeWidth={2 / scale}
-                        closed={true}
-                        fill="rgba(0,255,0,0.25)"
-                        data-annotation-id={annotation.id}
-                        draggable
-                        onDragStart={handleShapeDragStart}
-                        onDragMove={handleShapeDragMove}
-                        onDragEnd={handleShapeDragEnd}
-                      />
-                    );
-                  })
-                : // Show only the active annotation's points
-                  points.length > 0 && (
-                    <>
-                      {annotations.find((ann) => ann.isActive)?.type === 'DIRECTIONAL' ? (
-                        <Arrow
-                          points={points}
-                          stroke="#0000ff"
-                          strokeWidth={2 / scale}
-                          fill="#0000ff"
-                          pointerLength={10 / scale}
-                          pointerWidth={10 / scale}
-                          draggable={!isDrawing}
-                          x={polygonPosition.x}
-                          y={polygonPosition.y}
-                          data-annotation-id={annotations.find((ann) => ann.isActive)?.id}
-                          onDragStart={handleShapeDragStart}
-                          onDragMove={handleShapeDragMove}
-                          onDragEnd={handleShapeDragEnd}
-                        />
-                      ) : (
-                        <Line
-                          points={points}
-                          stroke="#0000ff"
-                          strokeWidth={2 / scale}
-                          closed={!isDrawing}
-                          fill={!isDrawing ? 'rgba(0,0,0,0.1)' : undefined}
-                          draggable={!isDrawing}
-                          x={polygonPosition.x}
-                          y={polygonPosition.y}
-                          data-annotation-id={annotations.find((ann) => ann.isActive)?.id}
-                          onDragStart={handleShapeDragStart}
-                          onDragMove={handleShapeDragMove}
-                          onDragEnd={handleShapeDragEnd}
-                        />
-                      )}
-                      {/* Draw points */}
-                      {points.map((point, i) => {
-                        if (i % 2 === 0) {
-                          const pointIndex = i / 2;
-                          return (
-                            <Circle
-                              key={i}
-                              x={point + polygonPosition.x}
-                              y={points[i + 1] + polygonPosition.y}
-                              radius={4 / scale}
-                              fill="#000000"
-                              stroke="#ffffff"
-                              strokeWidth={1 / scale}
-                              draggable={!isDrawing}
-                              data-point-index={pointIndex}
-                              onDragStart={() => handlePointDragStart(pointIndex)}
-                              onDragMove={(e) => handlePointDragMove(pointIndex, e)}
-                              onDragEnd={handlePointDragEnd}
-                              onContextMenu={(e) => handlePointContextMenu(pointIndex, e)}
-                            />
-                          );
-                        }
-                        return null;
-                      })}
-                    </>
-                  )}
-            </Layer>
-          </Stage>
+                    })
+                  : // Show only the active annotation's points
+                    points.length > 0 && (
+                      <>
+                        {annotations.find((ann) => ann.isActive)?.type === 'DIRECTIONAL' ? (
+                          <Arrow
+                            points={points}
+                            stroke="#0000ff"
+                            strokeWidth={2 / scale}
+                            fill="#0000ff"
+                            pointerLength={10 / scale}
+                            pointerWidth={10 / scale}
+                            draggable={!isDrawing}
+                            x={polygonPosition.x}
+                            y={polygonPosition.y}
+                            data-annotation-id={annotations.find((ann) => ann.isActive)?.id}
+                            onDragStart={handleShapeDragStart}
+                            onDragMove={handleShapeDragMove}
+                            onDragEnd={handleShapeDragEnd}
+                          />
+                        ) : (
+                          <Line
+                            points={points}
+                            stroke="#0000ff"
+                            strokeWidth={2 / scale}
+                            closed={!isDrawing}
+                            fill={!isDrawing ? 'rgba(0,0,0,0.1)' : undefined}
+                            draggable={!isDrawing}
+                            x={polygonPosition.x}
+                            y={polygonPosition.y}
+                            data-annotation-id={annotations.find((ann) => ann.isActive)?.id}
+                            onDragStart={handleShapeDragStart}
+                            onDragMove={handleShapeDragMove}
+                            onDragEnd={handleShapeDragEnd}
+                          />
+                        )}
+                        {/* Draw points */}
+                        {points.map((point, i) => {
+                          if (i % 2 === 0) {
+                            const pointIndex = i / 2;
+                            return (
+                              <Circle
+                                key={i}
+                                x={point + polygonPosition.x}
+                                y={points[i + 1] + polygonPosition.y}
+                                radius={4 / scale}
+                                fill="#000000"
+                                stroke="#ffffff"
+                                strokeWidth={1 / scale}
+                                draggable={!isDrawing}
+                                data-point-index={pointIndex}
+                                onDragStart={() => handlePointDragStart(pointIndex)}
+                                onDragMove={(e) => handlePointDragMove(pointIndex, e)}
+                                onDragEnd={handlePointDragEnd}
+                                onContextMenu={(e) => handlePointContextMenu(pointIndex, e)}
+                              />
+                            );
+                          }
+                          return null;
+                        })}
+                      </>
+                    )}
+              </Layer>
+            </Stage>
+          )}
         </div>
       </div>
     </div>

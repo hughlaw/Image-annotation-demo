@@ -116,6 +116,8 @@ export default function Annotation({ name, id, type, isActive, onClick, dispatch
               Annotation name
             </label>
             <input
+              data-1p-ignore // prevent 1password from filling this input
+              data-lpignore // prevent lastpass from filling this input
               type="text"
               id="name"
               value={_name}
@@ -141,7 +143,7 @@ export default function Annotation({ name, id, type, isActive, onClick, dispatch
         className="mx-auto mt-4 rounded-md border border-gray-200 p-4 shadow-md transition-all duration-300 backdrop:bg-black/40 backdrop:backdrop-blur-[2px]"
       >
         <div className="flex flex-col gap-2">
-          <h2 className="text-lg font-semibold">Delete Annotation</h2>
+          <h2 className="text-lg font-semibold">Delete {name}?</h2>
           <p className="text-sm text-gray-500">Are you sure you want to delete this annotation?</p>
           <div className="flex justify-between gap-2">
             <Button
