@@ -249,8 +249,21 @@ function App() {
     }
   };
 
+  const downloadURI = (uri: string, name: string) => {
+    const link = document.createElement('a');
+    link.download = name;
+    link.href = uri;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleExportPNG = () => {
-    console.debug('Exporting PNG');
+    const uri = stageRef.current?.toDataURL();
+    if (!uri) return;
+    // Remove extension from filename before adding new one
+    const baseFileName = fileName.replace(/\.[^/.]+$/, '');
+    downloadURI(uri, `${baseFileName}-with-annotations.png`);
   };
 
   const handlePointDragStart = (index: number) => {
@@ -336,11 +349,36 @@ function App() {
   };
 
   const handleExportCoordinates = () => {
-    const coordinates = [];
-    for (let i = 0; i < points.length; i += 2) {
-      coordinates.push([points[i], points[i + 1]]);
-    }
-    console.log('Polygon coordinates:', coordinates);
+    // Convert points to cartesian coordinates (-100 to 100)
+    const convertToCartesian = (points: number[]) => {
+      const cartesianPoints = [];
+      for (let i = 0; i < points.length; i += 2) {
+        const x = (points[i] / originalSize.width) * 200 - 100;
+        const y = -((points[i + 1] / originalSize.height) * 200) + 100; // Flip Y axis
+        cartesianPoints.push([x, y]);
+      }
+      return cartesianPoints;
+    };
+
+    // Create export data with all annotations
+    const exportData = annotations.map((annotation) => ({
+      id: annotation.id,
+      name: annotation.name,
+      type: annotation.type,
+      points: convertToCartesian(annotation.points),
+      isClosed: annotation.isClosed,
+    }));
+
+    // Create and download JSON file
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'annotations.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleToolSelect = (tool: Tool) => {
@@ -503,10 +541,14 @@ function App() {
           </div>
 
           <div className="flex flex-wrap gap-1">
-            <Button variant="default" onClick={handleExportPNG} disabled={points.length === 0 || !imageUrl}>
+            <Button variant="default" onClick={handleExportPNG} disabled={annotations.length === 0 || !imageUrl}>
               <PiImage /> Export as PNG
             </Button>
-            <Button variant="default" onClick={handleExportCoordinates} disabled={points.length === 0 || !imageUrl}>
+            <Button
+              variant="default"
+              onClick={handleExportCoordinates}
+              disabled={annotations.length === 0 || !imageUrl}
+            >
               <PiExport /> Export coordinates
             </Button>
           </div>
