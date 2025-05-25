@@ -374,7 +374,9 @@ function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'annotations.json';
+    // Remove extension from filename before adding new one
+    const baseFileName = fileName.replace(/\.[^/.]+$/, '');
+    link.download = `${baseFileName}-annotations.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
