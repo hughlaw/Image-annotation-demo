@@ -23,13 +23,14 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const variantStyles = {
-    default: 'bg-gray-100 border border-gray-200 hover:bg-gray-200 text-black',
-    success: 'bg-green-500 hover:bg-green-600 text-white',
-    error: 'bg-red-500 hover:bg-red-600 text-white',
-    info: 'bg-blue-500 hover:bg-blue-600 text-white',
-    link: 'text-blue-500 hover:text-blue-600',
-    'link-success': 'text-green-500 hover:bg-green-500/10',
-    'link-error': 'text-red-500 hover:bg-red-500/10',
+    default:
+      'bg-gray-100 border border-gray-200 hover:bg-gray-200 text-black disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed',
+    success: 'bg-green-500 hover:bg-green-600 text-white disabled:bg-green-300 disabled:cursor-not-allowed',
+    error: 'bg-red-500 hover:bg-red-600 text-white disabled:bg-red-300 disabled:cursor-not-allowed',
+    info: 'bg-blue-500 hover:bg-blue-600 text-white disabled:bg-blue-300 disabled:cursor-not-allowed',
+    link: 'text-blue-500 hover:text-blue-600 disabled:text-blue-300 disabled:cursor-not-allowed',
+    'link-success': 'text-green-500 hover:bg-green-500/10 disabled:text-green-300 disabled:cursor-not-allowed',
+    'link-error': 'text-red-500 hover:bg-red-500/10 disabled:text-red-300 disabled:cursor-not-allowed',
   };
 
   const sizeStyles = {

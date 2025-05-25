@@ -464,7 +464,7 @@ function App() {
         <div className="flex flex-col gap-4">
           <div className="flex justify-between gap-2">
             <h1 className="text-lg font-bold">Annotations</h1>
-            <Button variant="success" onClick={handleAddAnnotation}>
+            <Button variant="success" onClick={handleAddAnnotation} disabled={!imageUrl}>
               <PiPlus />
               Add <span className="sr-only">annotation</span>
             </Button>
@@ -496,17 +496,17 @@ function App() {
               className="hidden"
               id="imageUpload"
             />
-            <Button variant="default" onClick={handleUploadClick}>
+            <Button variant={imageUrl ? 'default' : 'info'} onClick={handleUploadClick}>
               <PiImage /> {fileName ? 'Change Image' : 'Upload Image'}
             </Button>
             {fileName && <span className="text-sm text-gray-600">{fileName}</span>}
           </div>
 
           <div className="flex flex-wrap gap-1">
-            <Button variant="default" onClick={handleExportPNG} disabled={points.length === 0}>
+            <Button variant="default" onClick={handleExportPNG} disabled={points.length === 0 || !imageUrl}>
               <PiImage /> Export as PNG
             </Button>
-            <Button variant="default" onClick={handleExportCoordinates} disabled={points.length === 0}>
+            <Button variant="default" onClick={handleExportCoordinates} disabled={points.length === 0 || !imageUrl}>
               <PiExport /> Export coordinates
             </Button>
           </div>
@@ -521,6 +521,7 @@ function App() {
               groupPosition="first"
               onClick={() => handleToolSelect('directional')}
               isSelected={currentTool === 'directional'}
+              disabled={!imageUrl}
             >
               <PiArrowUpRight />
             </Button>
@@ -530,21 +531,22 @@ function App() {
               groupPosition="last"
               onClick={() => handleToolSelect('polygon')}
               isSelected={currentTool === 'polygon'}
+              disabled={!imageUrl}
             >
               <PiPolygon />
             </Button>
           </div>
           <div className="flex flex-wrap gap-1">
-            <Button variant="default" onClick={handleUndo} disabled={historyIndex <= 0}>
+            <Button variant="default" onClick={handleUndo} disabled={historyIndex <= 0 || !imageUrl}>
               <PiArrowCounterClockwise /> Undo
             </Button>
-            <Button variant="default" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
+            <Button variant="default" onClick={handleRedo} disabled={historyIndex >= history.length - 1 || !imageUrl}>
               <PiArrowClockwise /> Redo
             </Button>
             <Button
               variant="success"
               onClick={handleSaveAnnotation}
-              disabled={points.length === 0 || !annotations.some((ann) => ann.isActive)}
+              disabled={points.length === 0 || !annotations.some((ann) => ann.isActive) || !imageUrl}
             >
               Save Annotation
             </Button>
