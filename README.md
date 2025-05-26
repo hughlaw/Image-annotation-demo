@@ -19,5 +19,3 @@ or if using PNPM
 pnpm i
 pnpm dev
 ```
-
-## TESTING
