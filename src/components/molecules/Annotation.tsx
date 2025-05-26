@@ -1,4 +1,4 @@
-import { useRef, useState, type Dispatch } from 'react';
+import { useEffect, useRef, useState, type Dispatch } from 'react';
 import type { Annotation, AnnotationAction } from '../../stores/annotationStore';
 import Button from '../atoms/Button';
 import { PiCircleNotch, PiPencil, PiTrash } from 'react-icons/pi';
@@ -9,7 +9,7 @@ interface AnnotationProps extends Annotation {
 }
 
 export default function Annotation({ name, id, type, isActive, onClick, dispatch }: AnnotationProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
   const [_name, setTempName] = useState(name);
   const [isSaving, setIsSaving] = useState(false);
   const deleteModal = useRef<HTMLDialogElement>(null);
@@ -64,6 +64,13 @@ export default function Annotation({ name, id, type, isActive, onClick, dispatch
     // dispatch({ type: 'REMOVE_ANNOTATION', payload: { id } });
     deleteModal.current?.showModal();
   };
+
+  useEffect(() => {
+    if (isEditing && nameInput.current) {
+      nameInput.current.focus();
+      nameInput.current.select();
+    }
+  }, [isEditing]);
 
   return (
     <div className={`flex flex-col gap-2 rounded-md border border-gray-200`}>
