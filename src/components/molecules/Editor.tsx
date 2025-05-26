@@ -589,8 +589,10 @@ export default function Editor({
               <PiInfo />
               <p className="text-sm">
                 {annotations.some((ann) => ann.isActive) && <p>Click to add points. Right click to remove a point.</p>}
-                {!annotations.length && <p>Create an annotation to get started.</p>}
-                {annotations.length && !annotations.some((ann) => ann.isActive) && <p>Select an annotation to edit.</p>}
+                {Boolean(!annotations.length) && <p>Create an annotation to get started.</p>}
+                {Boolean(annotations.length) && !annotations.some((ann) => ann.isActive) && (
+                  <p>Select an annotation to edit.</p>
+                )}
               </p>
             </div>
             <Stage
