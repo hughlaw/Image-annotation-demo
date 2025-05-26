@@ -1,3 +1,6 @@
+# local pnpn settings
+.npmrc
+
 # Logs
 logs
 *.log
