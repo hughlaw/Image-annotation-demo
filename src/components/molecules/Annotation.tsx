@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, type Dispatch } from 'react';
 import type { Annotation, AnnotationAction } from '../../stores/annotationStore';
 import Button from '../atoms/Button';
-import { PiCircleNotch, PiPencil, PiTrash } from 'react-icons/pi';
+import { PiCheck, PiCircleNotch, PiCross, PiExclamationMark, PiPencil, PiTrash } from 'react-icons/pi';
 
 interface AnnotationProps extends Annotation {
   onClick?: () => void;
   dispatch: Dispatch<AnnotationAction>;
 }
 
-export default function Annotation({ name, id, type, isActive, onClick, dispatch }: AnnotationProps) {
+export default function Annotation({ name, id, type, isActive, isComplete, onClick, dispatch }: AnnotationProps) {
   const [isEditing, setIsEditing] = useState(true);
   const [_name, setTempName] = useState(name);
   const [isSaving, setIsSaving] = useState(false);
@@ -73,7 +73,11 @@ export default function Annotation({ name, id, type, isActive, onClick, dispatch
   }, [isEditing]);
 
   return (
-    <div className={`flex flex-col gap-2 rounded-md border border-gray-200`}>
+    <div
+      className={`flex flex-col gap-2 rounded-md border ${
+        isActive ? 'border-gray-200' : 'border-transparent hover:border-gray-200'
+      }`}
+    >
       {/* Annotation item */}
       <div
         className={`flex items-center gap-2 rounded-t-md p-2 hover:cursor-pointer hover:bg-gray-100 ${isActive ? '!bg-blue-100' : ''} ${
@@ -82,42 +86,65 @@ export default function Annotation({ name, id, type, isActive, onClick, dispatch
         onClick={handleOnClick}
       >
         <div className="flex w-full flex-col">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold">{name}</p>
-            <div className="flex gap-1">
-              {!isEditing && (
+          <div className="flex gap-2">
+            {isComplete ? (
+              <div className="flex items-center gap-1 rounded bg-green-100 p-2 text-green-500">
+                <PiCheck className="h-5 w-5" />
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 rounded bg-red-100 p-2 text-red-500">
+                <PiExclamationMark className="h-5 w-5" />
+              </div>
+            )}
+            <div className="flex w-full items-center justify-between">
+              <div className="flex flex-col">
+                <p className="text-sm font-semibold">{name}</p>
+                <div className="flex gap-1">
+                  <span className="text-xs text-gray-500">{type === 'POLYGON' ? 'Operational Area' : 'Direction'}</span>
+                  {isSaving && (
+                    <span className="flex items-center gap-1 text-xs text-gray-500">
+                      <PiCircleNotch className="animate-spin" /> Saving
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-1">
+                {!isEditing && (
+                  <Button
+                    variant="link"
+                    size="xs"
+                    onClick={handleEditClick}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <PiPencil className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
-                  variant="link"
+                  variant="link-error"
                   size="xs"
-                  onClick={handleEditClick}
+                  onClick={handleDeleteClick}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  <PiPencil className="h-4 w-4" />
+                  <PiTrash className="h-4 w-4" />
                 </Button>
-              )}
-              <Button
-                variant="link-error"
-                size="xs"
-                onClick={handleDeleteClick}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <PiTrash className="h-4 w-4" />
-              </Button>
+              </div>
             </div>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-xs text-gray-500">{type === 'POLYGON' ? 'Operational Area' : 'Direction'}</span>
-            {isSaving && (
-              <span className="flex items-center gap-1 text-xs text-gray-500">
-                <PiCircleNotch className="animate-spin" /> Saving
-              </span>
-            )}
           </div>
         </div>
       </div>
       {/* EDITING INPUTS */}
       {isEditing && (
         <form className="flex flex-col gap-2 px-2 pb-4" onSubmit={onSubmit}>
+          <div className={`rounded-lg p-2 ${isComplete ? 'bg-green-100' : 'bg-red-100'}`}>
+            <p className="flex items-center gap-1 text-sm font-semibold">
+              {isComplete ? (
+                <PiCheck className="h-5 w-5 text-green-500" />
+              ) : (
+                <PiExclamationMark className="h-5 w-5 text-red-500" />
+              )}
+              {isComplete ? 'Annotation complete' : 'Annotation incomplete'}
+            </p>
+          </div>
           <div className="flex justify-between gap-1">
             <label htmlFor="name" className="sr-only">
               Annotation name

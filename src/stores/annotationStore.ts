@@ -5,14 +5,14 @@ export interface Annotation {
   name: string;
   type: AnnotationType;
   points: number[];
-  isClosed: boolean;
   isActive?: boolean;
+  isComplete: boolean;
 }
 
 export type AnnotationAction =
   | { type: 'ADD_ANNOTATION'; payload: { id: string; name: string; annotationType: AnnotationType } }
   | { type: 'UPDATE_ANNOTATION_NAME'; payload: { id: string; name: string } }
-  | { type: 'UPDATE_ANNOTATION_POINTS'; payload: { id: string; points: number[] } }
+  | { type: 'UPDATE_ANNOTATION_POINTS'; payload: { id: string; points: number[]; isComplete: boolean } }
   | { type: 'REMOVE_ANNOTATION'; payload: { id: string } }
   | { type: 'SET_ACTIVE_ANNOTATION'; payload: { id: string } }
   | { type: 'UPDATE_ANNOTATION_TYPE'; payload: { id: string; type: AnnotationType } };
@@ -27,13 +27,17 @@ export function annotationReducer(state: Annotation[], action: AnnotationAction)
           name: action.payload.name,
           type: action.payload.annotationType,
           points: [],
-          isClosed: false,
+          isComplete: false,
         },
       ];
     case 'UPDATE_ANNOTATION_NAME':
       return state.map((ann) => (ann.id === action.payload.id ? { ...ann, name: action.payload.name } : ann));
     case 'UPDATE_ANNOTATION_POINTS':
-      return state.map((ann) => (ann.id === action.payload.id ? { ...ann, points: action.payload.points } : ann));
+      return state.map((ann) =>
+        ann.id === action.payload.id
+          ? { ...ann, points: action.payload.points, isComplete: action.payload.isComplete }
+          : ann
+      );
     case 'REMOVE_ANNOTATION':
       return state.filter((ann) => ann.id !== action.payload.id);
     case 'SET_ACTIVE_ANNOTATION':

@@ -99,7 +99,7 @@ function App() {
               type={annotation.type}
               points={annotation.points}
               isActive={annotation.isActive}
-              isClosed={annotation.isClosed}
+              isComplete={annotation.isComplete}
               onClick={() => handleAnnotationClick(annotation.id)}
             />
           ))}

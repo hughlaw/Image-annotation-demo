@@ -11,6 +11,8 @@ import type { Annotation, AnnotationAction } from '../../stores/annotationStore'
 import useImage from 'use-image';
 import type { KonvaEventObject } from 'konva/lib/Node';
 
+const STROKE_WIDTH = 4;
+
 interface EditorProps {
   annotations: Annotation[];
   dispatch: Dispatch<AnnotationAction>;
@@ -405,11 +407,18 @@ export default function Editor({
     if (points.length > 0) {
       const activeAnnotation = annotations.find((ann) => ann.isActive);
       if (activeAnnotation) {
+        // Determine if the annotation is complete based on type and points
+        const isComplete =
+          activeAnnotation.type === 'DIRECTIONAL'
+            ? points.length >= 2 // Directional needs at least 1 point (2 coordinates)
+            : points.length >= 6; // Polygon needs at least 3 points (6 coordinates)
+
         dispatch({
           type: 'UPDATE_ANNOTATION_POINTS',
           payload: {
             id: activeAnnotation.id,
             points: [...points],
+            isComplete,
           },
         });
         // Reset the current drawing state
@@ -457,7 +466,7 @@ export default function Editor({
       name: annotation.name,
       type: annotation.type,
       points: convertToCartesian(annotation.points),
-      isClosed: annotation.isClosed,
+      isComplete: annotation.isComplete,
     }));
 
     // Create and download JSON file
@@ -610,7 +619,7 @@ export default function Editor({
                             key={annotation.id}
                             points={annotation.points}
                             stroke="#00FF00"
-                            strokeWidth={2 / scale}
+                            strokeWidth={STROKE_WIDTH / scale}
                             fill="#00FF00"
                             pointerLength={10 / scale}
                             pointerWidth={10 / scale}
@@ -625,7 +634,7 @@ export default function Editor({
                           key={annotation.id}
                           points={annotation.points}
                           stroke="#00FF00"
-                          strokeWidth={2 / scale}
+                          strokeWidth={STROKE_WIDTH / scale}
                           closed={true}
                           fill="rgba(0,255,0,0.25)"
                           data-annotation-id={annotation.id}
@@ -639,9 +648,9 @@ export default function Editor({
                         {annotations.find((ann) => ann.isActive)?.type === 'DIRECTIONAL' ? (
                           <Arrow
                             points={points}
-                            stroke="#0000ff"
-                            strokeWidth={2 / scale}
-                            fill="#0000ff"
+                            stroke="#00ffff"
+                            strokeWidth={STROKE_WIDTH / scale}
+                            fill="#00ffff"
                             pointerLength={10 / scale}
                             pointerWidth={10 / scale}
                             draggable={!isDrawing}
@@ -655,8 +664,8 @@ export default function Editor({
                         ) : (
                           <Line
                             points={points}
-                            stroke="#0000ff"
-                            strokeWidth={2 / scale}
+                            stroke="#00ffff"
+                            strokeWidth={STROKE_WIDTH / scale}
                             closed={!isDrawing}
                             fill={!isDrawing ? 'rgba(0,0,0,0.1)' : undefined}
                             draggable={!isDrawing}
