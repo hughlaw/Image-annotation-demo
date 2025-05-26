@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type Dispatch } from 'react';
+import { PiCheck, PiCircleNotch, PiExclamationMark, PiPencil, PiTrash } from 'react-icons/pi';
 import type { Annotation, AnnotationAction } from '../../stores/annotationStore';
 import Button from '../atoms/Button';
-import { PiCheck, PiCircleNotch, PiCross, PiExclamationMark, PiPencil, PiTrash } from 'react-icons/pi';
 
 interface AnnotationProps extends Annotation {
   onClick?: () => void;
