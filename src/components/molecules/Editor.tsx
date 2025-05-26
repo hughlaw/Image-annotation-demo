@@ -55,6 +55,8 @@ export default function Editor({
   const [scale, setScale] = useState(1);
   const [originalSize, setOriginalSize] = useState({ width: 0, height: 0 });
 
+  const canChangeTool = !annotations.some((ann) => ann.isActive && ann.points.length > 0);
+
   // Add resize handler
   useEffect(() => {
     const handleResize = () => {
@@ -529,7 +531,7 @@ export default function Editor({
               groupPosition="first"
               onClick={() => onToolSelect('directional')}
               isSelected={currentTool === 'directional'}
-              disabled={!imageUrl}
+              disabled={!imageUrl || (!canChangeTool && currentTool !== 'directional')}
             >
               <PiArrowUpRight />
             </Button>
@@ -539,7 +541,7 @@ export default function Editor({
               groupPosition="last"
               onClick={() => onToolSelect('polygon')}
               isSelected={currentTool === 'polygon'}
-              disabled={!imageUrl}
+              disabled={!imageUrl || (!canChangeTool && currentTool !== 'polygon')}
             >
               <PiPolygon />
             </Button>

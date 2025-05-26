@@ -31,9 +31,9 @@ function App() {
 
   const handleToolSelect = (tool: Tool) => {
     setCurrentTool(tool);
-    // Update the active annotation's type if one is selected
+    // Update the active annotation's type if one is selected and it hasn't been saved yet
     const activeAnnotation = annotations.find((ann) => ann.isActive);
-    if (activeAnnotation) {
+    if (activeAnnotation && activeAnnotation.points.length === 0) {
       dispatch({
         type: 'UPDATE_ANNOTATION_TYPE',
         payload: { id: activeAnnotation.id, type: tool === 'directional' ? 'DIRECTIONAL' : 'POLYGON' },
