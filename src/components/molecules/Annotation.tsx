@@ -156,7 +156,7 @@ export default function Annotation({ name, id, type, isActive, isComplete, onCli
               id="name"
               value={_name}
               onChange={(e) => setTempName(e.target.value)}
-              className="w-auto px-1 py-1 text-sm"
+              className="w-auto w-full rounded border border-gray-300 p-2 text-sm"
               required
               ref={nameInput}
             />
