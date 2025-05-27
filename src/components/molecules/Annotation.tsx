@@ -61,10 +61,10 @@ export default function Annotation({ name, id, type, isActive, isComplete, onCli
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the parent click handler
-    // dispatch({ type: 'REMOVE_ANNOTATION', payload: { id } });
     deleteModal.current?.showModal();
   };
 
+  // focus the name input when editing
   useEffect(() => {
     if (isEditing && nameInput.current) {
       nameInput.current.focus();

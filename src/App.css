@@ -1,1 +1,17 @@
 @import 'tailwindcss';
+
+dialog {
+  transition:
+    opacity 0.25s,
+    overlay 0.1s allow-discrete,
+    display 0.1s allow-discrete;
+  opacity: 0;
+  &[open] {
+    transition-duration: 0.25s;
+    opacity: 1;
+
+    @starting-style {
+      opacity: 0;
+    }
+  }
+}
